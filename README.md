@@ -1,2 +1,2 @@
-# resume-chatbot.py
+# resume_chatbot.py
 A Chatbot can read multiple resumes and can answer our queries
