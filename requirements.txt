@@ -1,6 +1,6 @@
 streamlit
-langchain
-langchain-community
+langchain>=0.1.0
+langchain-community>=0.0.20
 chromadb
-pypdf
-ollama
+PyPDF2
+requests
