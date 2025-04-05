@@ -1,6 +1,24 @@
+# Streamlit for UI
 streamlit
-langchain>=0.1.0
-langchain-community>=0.0.20
+
+# LangChain components
+langchain
+langchain-community
+
+# PDF loader
+pypdf
+
+# Vector store
 chromadb
-PyPDF2
+
+# Ollama bindings
 requests
+
+# Optional: Fast temporary file handling
+aiofiles
+
+# Used to run shell commands
+subprocess.run ; included in Python stdlib
+
+# Optional but recommended
+tqdm
