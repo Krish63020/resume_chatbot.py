@@ -1,13 +1,14 @@
 import streamlit as st
-from langchain_community.document_loaders.pdf import PyPDFLoader
+from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores.chroma import Chroma
-from langchain_community.embeddings.ollama import OllamaEmbeddings
-from langchain_community.llms.ollama import Ollama
+from langchain_community.vectorstores import Chroma
+from langchain_community.embeddings import OllamaEmbeddings
+from langchain_community.llms import Ollama
 from langchain.chains import RetrievalQA
 import os
 import subprocess
 import tempfile
+import chromadb
 
 st.title("Resume Chatbot")
 st.sidebar.header("Upload Resumes")
@@ -25,7 +26,7 @@ def ensure_model_pulled(model_name):
         st.error(f"Failed to pull model '{model_name}': {e}")
         raise
     except FileNotFoundError:
-        st.error("Ollama is not installed or not found in PATH. Please install it.")
+        st.error("Ollama is not installed or not found in PATH. Please install it locally.")
         raise
 
 # Initialize LLM and embeddings
@@ -64,8 +65,14 @@ def process_resumes(uploaded_files):
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         chunks = text_splitter.split_documents(documents)
 
-        # Create vector store
-        vectorstore = Chroma.from_documents(documents=chunks, embedding=embeddings)
+        # Create in-memory Chroma vector store
+        client = chromadb.EphemeralClient()  # In-memory for Streamlit Cloud
+        vectorstore = Chroma.from_documents(
+            documents=chunks,
+            embedding=embeddings,
+            client=client,
+            collection_name="resume_collection"
+        )
 
         # Create QA chain
         qa_chain = RetrievalQA.from_chain_type(
