@@ -2,38 +2,26 @@ import streamlit as st
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores.chroma import Chroma
-from langchain_community.embeddings.ollama import OllamaEmbeddings
-from langchain_community.llms.ollama import Ollama
+from langchain_openai import OpenAIEmbeddings
+from langchain_openai import ChatOpenAI
 from langchain.chains import RetrievalQA
 import os
-import subprocess
 import tempfile
+
+# Set OpenAI API key from Streamlit secrets or environment
+api_key = st.secrets.get("OPENAI_API_KEY", os.environ.get("OPENAI_API_KEY"))
+if not api_key:
+    st.error("OpenAI API key not found. Please set it in Streamlit secrets or as an environment variable.")
+    st.stop()
 
 st.title("Resume Chatbot")
 st.sidebar.header("Upload Resumes")
 uploaded_files = st.sidebar.file_uploader("Upload Resume PDFs", type="pdf", accept_multiple_files=True)
 
-def ensure_model_pulled(model_name):
-    """Ensure the specified Ollama model is pulled."""
-    try:
-        result = subprocess.run(["ollama", "list"], capture_output=True, text=True)
-        if model_name not in result.stdout:
-            st.info(f"Model '{model_name}' not found. Pulling it now...")
-            subprocess.run(["ollama", "pull", model_name], check=True)
-            st.success(f"Model '{model_name}' pulled successfully!")
-    except subprocess.CalledProcessError as e:
-        st.error(f"Failed to pull model '{model_name}': {e}")
-        raise
-    except FileNotFoundError:
-        st.error("Ollama is not installed or not found in PATH. Please install it.")
-        raise
-
 # Initialize LLM and embeddings
 try:
-    llm = Ollama(model="llama3")
-    embedding_model = "mxbai-embed-large"
-    ensure_model_pulled(embedding_model)
-    embeddings = OllamaEmbeddings(model=embedding_model)
+    llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=api_key)
+    embeddings = OpenAIEmbeddings(openai_api_key=api_key)
 except Exception as e:
     st.error(f"Failed to initialize LLM or embeddings: {e}")
     st.stop()
