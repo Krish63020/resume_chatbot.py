@@ -1,18 +1,16 @@
 import streamlit as st
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores.chroma import Chroma
-from langchain_openai import OpenAIEmbeddings
-from langchain_openai import ChatOpenAI
+from langchain_community.vectorstores import Chroma
+from langchain_openai import OpenAIEmbeddings  # Correct import
+from langchain_community.llms import Ollama  # Assuming you still use Ollama for LLM
 from langchain.chains import RetrievalQA
 import os
 import tempfile
+import chromadb
 
-# Set OpenAI API key from Streamlit secrets or environment
-api_key = st.secrets.get("OPENAI_API_KEY", os.environ.get("OPENAI_API_KEY"))
-if not api_key:
-    st.error("OpenAI API key not found. Please set it in Streamlit secrets or as an environment variable.")
-    st.stop()
+# Set OpenAI API key
+os.environ["OPENAI_API_KEY"] = "your-api-key-here"  # Replace with your key
 
 st.title("Resume Chatbot")
 st.sidebar.header("Upload Resumes")
@@ -20,8 +18,8 @@ uploaded_files = st.sidebar.file_uploader("Upload Resume PDFs", type="pdf", acce
 
 # Initialize LLM and embeddings
 try:
-    llm = ChatOpenAI(model="gpt-3.5-turbo", openai_api_key=api_key)
-    embeddings = OpenAIEmbeddings(openai_api_key=api_key)
+    llm = Ollama(model="llama3")  # Keeping Ollama for LLM
+    embeddings = OpenAIEmbeddings()  # Using OpenAI embeddings
 except Exception as e:
     st.error(f"Failed to initialize LLM or embeddings: {e}")
     st.stop()
@@ -39,7 +37,6 @@ def process_resumes(uploaded_files):
     
     try:
         for uploaded_file in uploaded_files:
-            # Use a temporary file to avoid naming conflicts
             with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp:
                 tmp.write(uploaded_file.getbuffer())
                 temp_files.append(tmp.name)
@@ -52,8 +49,14 @@ def process_resumes(uploaded_files):
         text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
         chunks = text_splitter.split_documents(documents)
 
-        # Create vector store
-        vectorstore = Chroma.from_documents(documents=chunks, embedding=embeddings)
+        # Create in-memory Chroma vector store with OpenAI embeddings
+        client = chromadb.EphemeralClient()
+        vectorstore = Chroma.from_documents(
+            documents=chunks,
+            embedding=embeddings,
+            client=client,
+            collection_name="resume_collection"
+        )
 
         # Create QA chain
         qa_chain = RetrievalQA.from_chain_type(
@@ -69,7 +72,6 @@ def process_resumes(uploaded_files):
         st.success("Resumes processed successfully!")
     
     finally:
-        # Clean up temporary files
         for temp_file in temp_files:
             if os.path.exists(temp_file):
                 os.remove(temp_file)
